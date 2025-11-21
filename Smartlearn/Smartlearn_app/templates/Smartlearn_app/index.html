@@ -1,0 +1,293 @@
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartLearn</title>
+<!-- include marked.js in your HTML head -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: {
+            glow: '0 0 0.5rem rgba(255,255,255,0.4), 0 0 1rem rgba(255,200,0,0.25)'
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="{% static 'Smartlearn_app/css/style.css'%}">
+</head>
+<body id="app" class="thematic min-h-screen flex">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar-expanded">
+     <div class="sidebar-card card h-full rounded-2xl flex flex-col"> 
+      <div class="sidebar-header relative flex items-center gap-3 p-3 border-b border-white/10 h-24">
+
+        <button id="toggleSidebar" class="toggle-pill" aria-expanded="true" title="Collapse / Expand sidebar"> 
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"> 
+            <path d="M4 7h16M4 12h12M4 17h16"></path> </svg> </button> 
+            <img src="{% static 'Smartlearn_app/image/bulb-svgrepo-com.svg'%}" alt="logo" class="brand-logo w-8 h-8"> 
+            <div class="brand-text font-semibold text-lg md:text-xl grad-text">SmartLearn</div> </div>
+
+      <nav class="flex-1 overflow-auto py-3">
+        <button data-section="search" class="nav-btn" aria-controls="section-search"><span class="dot" style="background:var(--accent)"></span><span class="truncate">Search</span></button>
+        <button data-section="story" class="nav-btn" aria-controls="section-story"><span class="dot" style="background:var(--accent)"></span><span class="truncate">Concept ➜ Story</span></button>
+        <button data-section="flashcards" class="nav-btn" aria-controls="section-flashcards"><span class="dot" style="background:var(--accent)"></span><span class="truncate">Flashcards</span></button>
+        <button data-section="mcqs" class="nav-btn" aria-controls="section-mcqs"><span class="dot" style="background:var(--accent)"></span><span class="truncate">MCQs (Practice)</span></button>
+        <button data-section="keywords" class="nav-btn" aria-controls="section-keywords"><span class="dot" style="background:var(--accent)"></span><span class="truncate">Keywords</span></button>
+        <button data-section="test" class="nav-btn" aria-controls="section-test"><span class="dot" style="background:var(--accent)"></span><span class="truncate">MCQ Test</span></button>
+      </nav>
+
+      <div class="theme-action p-3 border-t border-white/10 flex items-center justify-between">
+        <button id="changeTheme" class="theme-btn w-full py-2 rounded-xl btn playful flex items-center gap-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v1M12 21v1M4.2 4.2l.7.7M19.1 19.1l.7.7M2 12h1M21 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7" />
+          </svg>
+          <span class="theme-label">Change Theme</span>
+        </button>
+
+        <button id="changeThemeIcon" class="theme-icon hidden p-2 rounded-lg btn" aria-label="Change Theme">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 2v1M12 21v1M4.2 4.2l.7.7M19.1 19.1l.7.7M2 12h1M21 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-3 pb-3">
+        <div id="currentThemeName" class="text-xs text-[var(--muted)] mt-2 text-center"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- mobile backdrop -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop hidden" aria-hidden="true"></div>
+
+  <!-- MAIN (sparkles are created inside #main) -->
+  <main id="main" class="flex-1 p-4 md:p-6 relative">
+    <header id="pageHeader" class="flex items-center justify-between mb-4 relative">
+      <div class="header-left relative z-10">
+        <h1 class="text-2xl md:text-3xl font-semibold flex items-center gap-3">
+          <img class="logo w-8 h-8" src="{% static 'Smartlearn_app/image/bulb-svgrepo-com.svg'%}" alt="logo">
+          Welcome to <span class="grad-text">SmartLearn</span>
+        </h1>
+        <p class="text-sm text-[var(--muted)]">Pick a tool from the left to get started.</p>
+      </div>
+
+      <div class="relative z-10 flex items-center gap-3">
+        <span class="hidden md:inline text-sm text-[var(--muted)]">Theme:</span>
+        <div id="themeBadge" class="px-3 py-1 rounded-xl border border-white/10"></div>
+        <button id="openAuth" class="ml-2 px-4 py-2 rounded-full btn flex items-center gap-2" title="Sign in or sign up">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          </svg>
+          <span class="text-sm">Sign In</span>
+        </button>
+      </div>
+    </header>
+
+
+<!-- SEARCH -->
+<section id="section-search" class="min-h-screen flex flex-col items-center justify-center text-center relative transition-all duration-500">
+  <!-- Heading -->
+  <h2 id="searchHeading" class="text-4xl md:text-5xl font-bold mb-8 grad-text transition-all duration-500">Welcome to SmartLearn</h2>
+
+  <!-- Search input wrapper -->
+  <div id="searchWrapper" class="w-full max-w-3xl relative transition-all duration-500">
+    <input id="searchInput" type="text" placeholder="Search for a concept..." class="w-full px-6 py-5 text-xl rounded-full border border-white/20 bg-white/5 text-center text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:ring-4 focus:ring-[var(--accent)] transition" />
+    <button id="searchBtn"
+  class="absolute right-3 top-1/2 -translate-y-1/2 px-4 py-2 rounded-full btn focus:outline-none focus:ring-0">
+  🔍
+</button>
+
+
+  </div>
+
+  <!-- Result box (hidden initially) -->
+  <div id="searchResult" class="flex flex-col justify-start w-full max-w-5xl h-96 mt-6 border border-white/20 rounded-2xl bg-[var(--panel)]/20 text-white text-left p-4 opacity-0 pointer-events-none overflow-y-auto transition-all duration-500">
+</div>
+
+
+
+</section>
+
+
+
+    <!-- Story -->
+    <section id="section-story" class="card rounded-2xl p-4 md:p-6 hidden z-10">
+      <h2 class="text-xl font-semibold mb-3">Concept ➜ Story</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <label class="text-sm text-[var(--muted)]">Enter your concept</label>
+          <textarea id="conceptInput" class="textarea w-full rounded-xl p-3" rows="6" placeholder="e.g., Newton's First Law"></textarea>
+          <div class="flex items-center gap-2">
+            <select id="toneSelect" class="select rounded-xl px-3 py-2text-white bg-gray-800 ">
+              <option value="simple">Simple</option>
+              <option value="fun">Fun</option>
+              <option value="epic">Epic</option>
+              <option value="analogy">Analogy</option>
+            </select>
+            <button id="genStory" class="px-4 py-2 rounded-xl btn">Generate Story</button>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <label class="text-sm text-[var(--muted)]">Story Output</label>
+          <div id="storyOutput" class="rounded-2xl p-4 border border-white/10 bg-black/10 min-h-[160px]"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Flashcards -->
+    <section id="section-flashcards" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">Flashcards</h2>
+      <div id="flashcardGrid" class="grid md:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!--MCQ Practice--->
+    <section id="section-mcqs" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">MCQs (Practice)</h2>
+      <div id="mcqContainer" class="space-y-3"></div>
+      <div class="flex gap-2 mt-4">
+        <button id="nextMcq" class="px-4 py-2 rounded-xl btn">Next Question</button>
+        <div id="mcqScore" class="ml-auto text-sm text-[var(--muted)]">Score: 0</div>
+      </div>
+    </section>
+
+    <!-- Keywords -->
+    <section id="section-keywords" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">Keywords</h2>
+      <div id="kwList" class="grid md:grid-cols-2 gap-3"></div>
+    </section>
+
+    <!-- MCQ Test -->
+    <section id="section-test" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">MCQ Test</h2>
+      <div id="testArea" class="space-y-4"></div>
+      <div class="flex items-center gap-3 mt-4">
+        <button id="submitTest" class="px-4 py-2 rounded-xl btn">Submit Test</button>
+        <div id="testResult" class="text-sm text-[var(--muted)]"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- AUTH MODAL (centered and higher z-index) -->
+  <div id="authModal" class="hidden">
+    <div id="authBackdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+    <div class="relative z-80 w-full max-w-3xl h-full flex items-center justify-center p-4">
+      <div class="card rounded-3xl p-6 md:p-8 overflow-hidden relative" style="max-width:900px; width:100%;">
+        <div class="absolute inset-0 pointer-events-none" id="modalSparkles"></div>
+
+        <div class="flex gap-6 items-center">
+          <div class="hidden md:flex flex-col items-center gap-3 w-1/3">
+            <div class="bg-gradient-to-br from-white/5 to-transparent rounded-2xl p-4 transform -translate-y-2 animate-bounce-slow">
+              <svg width="110" height="110" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.9"/><stop offset="1" stop-color="#fdd835" stop-opacity="0.9"/></linearGradient></defs>
+                <circle cx="100" cy="80" r="48" fill="url(#g1)"/><circle cx="82" cy="72" r="8" fill="#1f2937"/><circle cx="118" cy="72" r="8" fill="#1f2937"/><path d="M70 100 q30 22 60 0" stroke="#1f2937" stroke-width="4" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="text-center"><div class="font-medium">Spark</div><div class="text-xs text-[var(--muted)]">Guide to learning magic ✨</div></div>
+          </div>
+
+          <div class="w-full md:w-2/3">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-2xl font-semibold grad-text">Welcome to SmartLearn</h3>
+              <button id="closeAuth" class="p-2 rounded-lg btn" title="Close">✕</button>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+              <button id="tabSignIn" class="px-4 py-2 rounded-full btn tab-active">Sign In</button>
+              <button id="tabSignUp" class="px-4 py-2 rounded-full btn">Sign Up</button>
+            </div>
+
+            <div id="authForms" class="space-y-3">
+              <form id="formSignIn" class="space-y-3" autocomplete="on" onsubmit="return false;">
+                <div><label class="text-sm text-[var(--muted)]">Email</label><input id="signinEmail" type="email" required class="input w-full rounded-xl px-3 py-2" placeholder="you@school.edu" /></div>
+                <div><label class="text-sm text-[var(--muted)]">Password</label><input id="signinPassword" type="password" required class="input w-full rounded-xl px-3 py-2" placeholder="••••••••" /></div>
+                <div class="flex items-center justify-between gap-2"><button id="btnSignIn" class="px-4 py-2 rounded-xl btn">Sign In</button><div id="signinMsg" class="text-sm text-[var(--muted)]"></div></div>
+                <div class="text-xs text-[var(--muted)]">Tip: this is frontend-only demo auth (saved to localStorage)</div>
+              </form>
+
+              <form id="formSignUp" class="space-y-3 hidden" autocomplete="on" onsubmit="return false;">
+                <div><label class="text-sm text-[var(--muted)]">Full name</label><input id="signupName" type="text" required class="input w-full rounded-xl px-3 py-2" placeholder="Your name" /></div>
+                <div><label class="text-sm text-[var(--muted)]">Email</label><input id="signupEmail" type="email" required class="input w-full rounded-xl px-3 py-2" placeholder="you@school.edu" /></div>
+                <div><label class="text-sm text-[var(--muted)]">Password</label><input id="signupPassword" type="password" required minlength="6" class="input w-full rounded-xl px-3 py-2" placeholder="At least 6 characters" /></div>
+                <div class="flex items-center gap-2"><button id="btnSignUp" class="px-4 py-2 rounded-xl btn">Create account</button><div id="signupMsg" class="text-sm text-[var(--muted)]"></div></div>
+              </form>
+            </div>
+
+            <div class="mt-4 text-sm text-[var(--muted)]">By continuing you agree to the playful terms of SmartLearn ✨</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'Smartlearn_app/js/script.js'%}"></script>
+
+<script>
+    const searchBtn = document.getElementById("searchBtn");
+    const searchInput = document.getElementById("searchInput");
+    const searchResult = document.getElementById("searchResult");
+
+    searchBtn?.addEventListener("click", async () => {
+      const query = searchInput.value.trim();
+      if (!query) {
+        searchResult.innerHTML = `<div class="p-3 text-[var(--text)]" style="background: transparent; border: none;">Please type a concept to search.</div>`;
+        searchResult.classList.remove("opacity-0", "pointer-events-none");
+        return;
+      }
+
+      searchResult.innerHTML = `<div class="p-3 text-[var(--text)]" style="background: transparent; border: none;">Generating response...</div>`;
+      searchResult.classList.remove("opacity-0", "pointer-events-none");
+
+      try {
+        const url = `/ai/?prompt=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        searchResult.innerHTML = "";
+
+        const inner = document.createElement("div");
+        inner.id = "searchResultInner";
+        inner.className = "p-4 overflow-auto max-h-72 text-left space-y-4";
+        inner.innerHTML = marked.parse(data.response);
+        searchResult.appendChild(inner);
+
+      } catch (err) {
+        console.error(err);
+        searchResult.innerHTML = `<div class="p-3 text-[var(--text)]" style="background: transparent; border: none;">Error generating response. Try again.</div>`;
+      }
+    });
+
+    // Event delegation for dynamic buttons
+    searchResult.addEventListener("click", (e) => {
+      const target = e.target;
+
+      // Flashcard toggle
+      if (target.classList.contains("flashcard-btn")) {
+        const card = target.closest(".flashcard");
+        if (card) card.classList.toggle("flipped");
+      }
+
+      // MCQ select
+      if (target.classList.contains("mcq-option")) {
+        target.classList.toggle("selected");
+      }
+    });
+  </script>
+</body>
+</html>
+</html>

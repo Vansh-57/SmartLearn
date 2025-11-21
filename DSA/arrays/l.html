@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en" class="antialiased transition-colors duration-500">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Search — Story — Flashcards — MCQ — Keywords (Tailwind)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* small helpers not in Tailwind for the sliding indicator calculation */
+      .slider-item { cursor: pointer }
+      .indicator { transition: transform 300ms cubic-bezier(.2,.8,.2,1), width 300ms; }
+    </style>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="w-full px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg">A</div>
+        <h1 class="font-semibold text-lg">A.I. Study Lab</h1>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="themeToggle" aria-label="Toggle theme" class="p-2 rounded-lg bg-white/70 dark:bg-gray-800/70 shadow hover:scale-105 transform transition">
+          <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-800 dark:text-gray-100" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a.75.75 0 01.75.75V4.5a.75.75 0 01-1.5 0V2.75A.75.75 0 0110 2zM10 15.5a4.5 4.5 0 100-9 4.5 4.5 0 000 9zM3.22 4.22a.75.75 0 011.06 0L5.5 5.44a.75.75 0 11-1.06 1.06L3.22 5.28a.75.75 0 010-1.06zM14.5 14.5a.75.75 0 011.06 0l1.22 1.22a.75.75 0 11-1.06 1.06L14.5 15.56a.75.75 0 010-1.06zM2 10a.75.75 0 01.75-.75H4.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zM15.5 10a.75.75 0 01.75-.75h1.75a.75.75 0 010 1.5H16.25A.75.75 0 0115.5 10zM3.22 15.78a.75.75 0 000 1.06l1.22 1.22a.75.75 0 101.06-1.06L4.28 15.78a.75.75 0 00-1.06 0zM14.78 4.22a.75.75 0 000 1.06l1.22 1.22a.75.75 0 101.06-1.06L15.84 4.22a.75.75 0 00-1.06 0z"/></svg>
+        </button>
+
+        <a href="#" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white shadow hover:scale-105 transform transition">Try Demo</a>
+      </div>
+    </header>
+
+    <!-- Slider nav -->
+    <nav class="w-full px-6">
+      <div class="relative max-w-4xl mx-auto">
+        <div id="slider" class="flex bg-white/70 dark:bg-gray-800/60 rounded-xl p-1 gap-1 shadow-md overflow-hidden">
+          <!-- Items -->
+          <div data-index="0" class="slider-item flex-1 text-center py-3 px-4 rounded-lg select-none">Search</div>
+          <div data-index="1" class="slider-item flex-1 text-center py-3 px-4 rounded-lg select-none">Story</div>
+          <div data-index="2" class="slider-item flex-1 text-center py-3 px-4 rounded-lg select-none">Flashcards</div>
+          <div data-index="3" class="slider-item flex-1 text-center py-3 px-4 rounded-lg select-none">MCQ</div>
+          <div data-index="4" class="slider-item flex-1 text-center py-3 px-4 rounded-lg select-none">Keywords</div>
+
+          <!-- sliding indicator -->
+          <div id="indicator" class="pointer-events-none absolute bottom-1 left-1 h-[calc(100%-8px)] bg-white dark:bg-gray-700 rounded-lg shadow indicator" style="width:20%"></div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="flex-1 flex items-center justify-center px-6 mt-10">
+      <div class="w-full max-w-3xl text-center">
+        <!-- central search like google -->
+        <form id="searchForm" class="mx-auto flex items-center gap-3 bg-white dark:bg-gray-800/80 px-6 py-6 rounded-2xl shadow-lg transform transition hover:shadow-xl" onsubmit="return false;">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1116.65 16.65z"/></svg>
+
+          <input id="searchInput" class="flex-1 bg-transparent outline-none text-lg placeholder-gray-400 dark:placeholder-gray-300" type="search" placeholder="Search for topics, stories, flashcards, MCQs..." />
+
+          <button id="searchBtn" class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:brightness-105 transition">Search</button>
+        </form>
+
+        <!-- small hint / actions -->
+        <div class="mt-6 flex items-center justify-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+          <span id="activeBadge" class="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700">Mode: <strong class="ml-2">Search</strong></span>
+          <button id="randomBtn" class="px-3 py-1 rounded-lg bg-white/60 dark:bg-gray-700/60">I'm feeling curious</button>
+        </div>
+
+        <!-- dynamic panel area -->
+        <section id="panel" class="mt-8 bg-white/60 dark:bg-gray-800/60 rounded-xl p-6 shadow-inner min-h-[180px] transition-all">
+          <p class="text-gray-600 dark:text-gray-300">Try typing a query and press <strong>Search</strong>, or switch the slider to explore Story / Flashcards / MCQ / Keywords demo content.</p>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">Made with ❤️ using Tailwind CSS — demo UI</footer>
+
+    <script>
+      // --- Theme toggle (light/dark) ---
+      const themeToggle = document.getElementById('themeToggle');
+      const themeIcon = document.getElementById('themeIcon');
+      const root = document.documentElement;
+
+      function setTheme(isDark){
+        if(isDark){
+          root.classList.add('dark');
+          localStorage.setItem('theme','dark');
+        }else{
+          root.classList.remove('dark');
+          localStorage.setItem('theme','light');
+        }
+        // simple icon swap (sun/moon styles) by rotating
+        themeIcon.style.transform = isDark ? 'rotate(40deg) scale(1.05)' : 'rotate(0deg)';
+      }
+
+      // initialize theme
+      const saved = localStorage.getItem('theme');
+      if(saved === 'dark' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)){
+        setTheme(true);
+      }else{
+        setTheme(false);
+      }
+
+      themeToggle.addEventListener('click', ()=>{
+        setTheme(!document.documentElement.classList.contains('dark'));
+      });
+
+      // --- Slider logic ---
+      const items = Array.from(document.querySelectorAll('.slider-item'));
+      const indicator = document.getElementById('indicator');
+      const panel = document.getElementById('panel');
+      const activeBadge = document.querySelector('#activeBadge strong');
+
+      function activate(index){
+        // move indicator: compute width and translateX
+        const parent = items[0].parentElement; // slider container
+        const fullWidth = parent.clientWidth - 8; // account for p-1 gap
+        const itemWidth = fullWidth / items.length;
+        indicator.style.width = itemWidth + 'px';
+        const leftOffset = 4 + index * itemWidth; // left padding (1 gap) + index*width
+        indicator.style.transform = `translateX(${leftOffset}px)`;
+
+        // update active visuals
+        items.forEach((it,i)=>{
+          if(i===index) it.classList.add('text-indigo-600','font-semibold'); else it.classList.remove('text-indigo-600','font-semibold');
+        });
+
+        // update panel content depending on index
+        const names = ['Search','Story','Flashcards','MCQ','Keywords'];
+        activeBadge.textContent = names[index];
+
+        // small demo content for each
+        if(index===0){
+          panel.innerHTML = `<h3 class=\"text-lg font-semibold\">Search mode</h3><p class=\"mt-3 text-sm\">Type a topic (e.g. <em>binary search</em>) and press Search to see results. This demo provides quick summaries & links.</p>`;
+        }else if(index===1){
+          panel.innerHTML = `<h3 class=\"text-lg font-semibold\">Story mode</h3><p class=\"mt-3 text-sm\">A short story will be generated from the query — suitable for teaching concepts via narrative. Example: "The Little Algorithm" (demo).</p>`;
+        }else if(index===2){
+          panel.innerHTML = `<h3 class=\"text-lg font-semibold\">Flashcards</h3><p class=\"mt-3 text-sm\">Quick question-answer flashcards appear here. Try: <em>what is polymorphism</em>.</p>`;
+        }else if(index===3){
+          panel.innerHTML = `<h3 class=\"text-lg font-semibold\">MCQ</h3><p class=\"mt-3 text-sm\">Multiple-choice questions based on the search. Use this for quick self-tests.</p>`;
+        }else{
+          panel.innerHTML = `<h3 class=\"text-lg font-semibold\">Keywords</h3><p class=\"mt-3 text-sm\">Extracted keywords and tags for the given query. Good for studying & indexing.</p>`;
+        }
+      }
+
+      // bind clicks
+      items.forEach((it,i)=>{
+        it.addEventListener('click', ()=>{ activate(i); });
+      });
+
+      // initial activate 0
+      window.addEventListener('load', ()=>{ activate(0); window.addEventListener('resize', ()=> activate(items.findIndex(it=>it.classList.contains('text-indigo-600'))>=0 ? items.findIndex(it=>it.classList.contains('text-indigo-600')):0)); });
+
+      // --- Search behaviour (demo) ---
+      const searchInput = document.getElementById('searchInput');
+      const searchBtn = document.getElementById('searchBtn');
+      const randomBtn = document.getElementById('randomBtn');
+
+      function runSearch(){
+        const q = searchInput.value.trim();
+        const mode = document.querySelector('#activeBadge strong').textContent;
+        if(!q){
+          panel.innerHTML = `<p class=\"text-sm text-gray-600 dark:text-gray-300\">Please type something to search.</p>`; return;
+        }
+        // Simple simulated results — replace with real API as needed
+        panel.innerHTML = `<h3 class=\"text-lg font-semibold\">Results for \"${q}\" (${mode})</h3>` +
+          `<div class=\"mt-4 text-sm space-y-3\">` +
+          `<div class=\"p-3 bg-white/80 dark:bg-gray-700/60 rounded-lg shadow-sm\"><strong>Summary</strong><p class=\"mt-2\">A short summary of <em>${q}</em>. Use this space to paste your learning notes.</p></div>` +
+          `<div class=\"p-3 bg-white/80 dark:bg-gray-700/60 rounded-lg shadow-sm\"><strong>Quick tips</strong><ul class=\"mt-2 list-disc pl-5\"><li>Tip 1 about ${q}</li><li>Tip 2 about ${q}</li></ul></div>` +
+          `</div>`;
+      }
+
+      searchBtn.addEventListener('click', runSearch);
+      searchInput.addEventListener('keydown', (e)=>{ if(e.key=== 'Enter'){ runSearch(); }});
+
+      randomBtn.addEventListener('click', ()=>{
+        const samples = ['binary search','polymorphism','merge sort','tcp vs udp','dependency injection'];
+        searchInput.value = samples[Math.floor(Math.random()*samples.length)]; runSearch();
+      });
+
+      // small accessibility: keyboard slider navigation (left/right)
+      document.addEventListener('keydown', (e)=>{
+        const activeIndex = items.findIndex(it=>it.classList.contains('text-indigo-600'));
+        if(e.key === 'ArrowRight'){ activate(Math.min(items.length-1, activeIndex+1)); }
+        if(e.key === 'ArrowLeft'){ activate(Math.max(0, activeIndex-1)); }
+      });
+
+    </script>
+  </body>
+</html>

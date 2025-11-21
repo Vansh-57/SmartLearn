@@ -1,0 +1,1420 @@
+/* =====================================================================
+   COMPLETE FIXED SCRIPT.JS - All issues resolved
+   ===================================================================== */
+
+/* =====================================================================
+   THEMES
+   ===================================================================== */
+const themes = [
+  {
+    id: 'magic-glow',
+    name: 'Magic Glow ✨',
+    apply: () => {
+      setVars({
+        bg: '#2a1744',
+        panel: 'rgba(255,255,255,0.08)',
+        text: '#f8fafc',
+        muted: '#e9d5ff',
+        accent: '#f5d76e',
+        accent2: '#f472b6',
+        ring: 'rgba(245,215,110,0.35)'
+      });
+      const main = document.getElementById('main');
+      if (main) {
+        main.classList.add('magic-bg');
+        spawnSparkles(main, 40);
+      }
+    },
+    cleanup: () => {
+      const main = document.getElementById('main');
+      if (main) {
+        main.classList.remove('magic-bg');
+        document.querySelectorAll('#main .sparkle').forEach(e => e.remove());
+      }
+    }
+  },
+  {
+    id: 'focus-blue',
+    name: 'Focus Blue',
+    apply: () => {
+      setVars({
+        bg: '#0b1220',
+        panel: '#0f172a',
+        text: '#e5e7eb',
+        muted: '#9ca3af',
+        accent: '#60a5fa',
+        accent2: '#a78bfa',
+        ring: 'rgba(96,165,250,0.18)'
+      });
+    },
+    cleanup: () => {}
+  }
+];
+
+function setVars({ bg, panel, text, muted, accent, accent2, ring }) {
+  const r = document.documentElement;
+  if (bg) r.style.setProperty('--bg', bg);
+  if (panel) r.style.setProperty('--panel', panel);
+  if (text) r.style.setProperty('--text', text);
+  if (muted) r.style.setProperty('--muted', muted);
+  if (accent) r.style.setProperty('--accent', accent);
+  if (accent2) r.style.setProperty('--accent-2', accent2);
+  if (ring) r.style.setProperty('--ring', ring);
+  
+  const app = document.getElementById('app');
+  if (app) app.style.background = bg;
+}
+
+let currentThemeIdx = -1;
+
+function applyTheme(idx) {
+  try {
+    if (currentThemeIdx >= 0 && themes[currentThemeIdx].cleanup) {
+      themes[currentThemeIdx].cleanup();
+    }
+    currentThemeIdx = idx;
+    themes[idx].apply();
+    
+    const tb = document.getElementById('themeBadge');
+    if (tb) tb.textContent = themes[idx].name;
+    
+    const cn = document.getElementById('currentThemeName');
+    if (cn) cn.textContent = `Current: ${themes[idx].name}`;
+  } catch (error) {
+    console.error('Theme error:', error);
+  }
+}
+
+function spawnSparkles(container, count) {
+  if (!container) return;
+  try {
+    container.querySelectorAll('.sparkle').forEach(el => el.remove());
+    const rect = container.getBoundingClientRect();
+    const width = rect.width || window.innerWidth;
+    const height = rect.height || window.innerHeight;
+
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement('span');
+      s.className = 'sparkle';
+      s.style.left = (Math.random() * width) + 'px';
+      s.style.top = (Math.random() * height) + 'px';
+      s.style.animationDelay = (Math.random() * 6).toFixed(2) + 's';
+      s.style.opacity = (0.4 + Math.random() * 0.8).toFixed(2);
+      s.style.zIndex = '1';
+      s.style.pointerEvents = 'none';
+      container.appendChild(s);
+    }
+  } catch (error) {
+    console.error('Sparkle error:', error);
+  }
+}
+
+/* =====================================================================
+   DATA
+   ===================================================================== */
+const demoMCQs = [];
+const extractedKeywords = [];
+const flashcardsData = [];
+
+let mcqIdx = 0;
+let mcqScore = 0;
+let mcqAttempts = 0;
+let currentTopic = null;
+
+/* =====================================================================
+   STORAGE - LOCAL STORAGE
+   ===================================================================== */
+function saveFlashcards() {
+  try {
+    localStorage.setItem('smartlearn_flashcards', JSON.stringify(flashcardsData));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function loadFlashcards() {
+  try {
+    const saved = localStorage.getItem('smartlearn_flashcards');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        flashcardsData.length = 0;
+        flashcardsData.push(...parsed);
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+function saveMCQs() {
+  try {
+    localStorage.setItem('smartlearn_mcqs', JSON.stringify(demoMCQs));
+  } catch (e) {}
+}
+
+function loadMCQs() {
+  try {
+    const saved = localStorage.getItem('smartlearn_mcqs');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        demoMCQs.length = 0;
+        demoMCQs.push(...parsed);
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+function clearAllData(newTopic) {
+  flashcardsData.length = 0;
+  demoMCQs.length = 0;
+  extractedKeywords.length = 0;
+  mcqIdx = 0;
+  mcqScore = 0;
+  mcqAttempts = 0;
+  currentTopic = newTopic;
+  try {
+    localStorage.removeItem('smartlearn_flashcards');
+    localStorage.removeItem('smartlearn_mcqs');
+  } catch (e) {}
+  
+  saveFlashcards();
+  saveMCQs();
+  updateHeaderStats();
+}
+
+/* =====================================================================
+   MCQ GENERATION
+   ===================================================================== */
+function shuffleArray(array) {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
+async function generateMCQs(query, aiResponse) {
+  try {
+    showNotification('🤖 AI is creating MCQs...', 2000);
+    
+    const url = `/ai/generate-mcqs/?topic=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: aiResponse })
+    });
+    
+    if (!res.ok) throw new Error('MCQ generation failed');
+    
+    const data = await res.json();
+    
+    if (data.mcqs) {
+      const mcqs = JSON.parse(data.mcqs);
+      
+      console.log(`✅ AI Generated ${mcqs.length} MCQs`);
+      
+      mcqs.forEach(mcq => {
+        if (mcq.q && mcq.opts && mcq.opts.length === 4 && typeof mcq.ans === 'number') {
+          demoMCQs.push({
+            q: mcq.q,
+            opts: mcq.opts,
+            ans: mcq.ans,
+            topic: query,
+            explanation: mcq.explanation || mcq.opts[mcq.ans]
+          });
+        }
+      });
+      
+      saveMCQs();
+      renderMCQ();
+      renderTest();
+      updateHeaderStats();
+      showMCQPopup();
+    }
+    
+  } catch (error) {
+    console.error('❌ AI MCQ generation error:', error);
+    showNotification('⚠️ MCQ generation failed, please try again', 3000);
+  }
+}
+
+/* =====================================================================
+   FLASHCARD GENERATION
+   ===================================================================== */
+async function generateMultipleFlashcards(query, aiResponse) {
+  try {
+    showNotification('🤖 AI is creating flashcards...', 2000);
+    
+    const url = `/ai/generate-flashcards/?topic=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: aiResponse })
+    });
+    
+    if (!res.ok) throw new Error('Flashcard generation failed');
+    
+    const data = await res.json();
+    
+    if (data.flashcards) {
+      const flashcards = JSON.parse(data.flashcards);
+      
+      console.log(`✅ AI Generated ${flashcards.length} flashcards`);
+      
+      flashcards.forEach(fc => {
+        if (fc.q && fc.a && fc.a.length > 20) {
+          flashcardsData.push({
+            q: fc.q,
+            a: fc.a,
+            type: fc.type || 'definition',
+            topic: query,
+            timestamp: Date.now()
+          });
+        }
+      });
+      
+      saveFlashcards();
+      renderFlashcards();
+      updateHeaderStats();
+      showFlashcardPopup();
+    }
+    
+  } catch (error) {
+    console.error('❌ AI Flashcard generation error:', error);
+    showNotification('⚠️ Flashcard generation failed, please try again', 3000);
+  }
+}
+
+/* =====================================================================
+   KEYWORD EXTRACTION
+   ===================================================================== */
+async function extractKeywords(query, aiResponse) {
+  try {
+    showNotification('🤖 AI is extracting keywords...', 2000);
+    
+    const url = `/ai/extract-keywords/?topic=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: aiResponse })
+    });
+    
+    if (!res.ok) throw new Error('Keyword extraction failed');
+    
+    const data = await res.json();
+    
+    if (data.keywords) {
+      const keywords = JSON.parse(data.keywords);
+      
+      console.log(`✅ AI Extracted ${keywords.length} keywords`);
+      
+      extractedKeywords.length = 0;
+      
+      keywords.forEach(kw => {
+        if (kw.k && kw.d) {
+          extractedKeywords.push({
+            k: kw.k,
+            d: kw.d
+          });
+        }
+      });
+      
+      if (extractedKeywords.length > 0) {
+        renderKeywords();
+        showKeywordsPopup();
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ AI Keyword extraction error:', error);
+    showNotification('⚠️ Keyword extraction failed, please try again', 3000);
+  }
+}
+
+/* =====================================================================
+   RENDERING FUNCTIONS
+   ===================================================================== */
+function renderFlashcards() {
+  const flashcardGrid = document.getElementById('flashcardGrid');
+  if (!flashcardGrid) return;
+  
+  flashcardGrid.innerHTML = '';
+
+  if (flashcardsData.length === 0) {
+    flashcardGrid.innerHTML = `
+      <div class="col-span-3 text-center text-[var(--muted)] p-8">
+        <div class="text-4xl mb-4">📚</div>
+        <div class="text-lg font-medium mb-2">No flashcards yet</div>
+        <div class="text-sm">Search for a topic to generate flashcards!</div>
+      </div>`;
+    return;
+  }
+
+  const headerDiv = document.createElement('div');
+  headerDiv.className = 'col-span-3 mb-4';
+  headerDiv.innerHTML = `
+    <span class="inline-block px-4 py-2 rounded-full border border-[var(--accent)] bg-[var(--accent)]/10 text-sm">
+      📚 ${flashcardsData.length} Flashcard${flashcardsData.length !== 1 ? 's' : ''}
+    </span>
+  `;
+  flashcardGrid.appendChild(headerDiv);
+
+  const cardsToShow = [...flashcardsData].reverse();
+  const typeColors = { 'definition': '🔵', 'keypoints': '🟢', 'process': '🟣' };
+
+  cardsToShow.forEach(fc => {
+    const div = document.createElement('div');
+    div.className = 'flashcard-wrapper relative';
+    
+    let displayAnswer = String(fc.a || 'No answer')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\*\*/g, '')
+      .trim();
+    
+    if (displayAnswer.length > 250) {
+      displayAnswer = displayAnswer.substring(0, 250) + '...';
+    }
+    
+    const typeBadge = typeColors[fc.type] || '📌';
+    const typeLabel = fc.type ? fc.type.charAt(0).toUpperCase() + fc.type.slice(1) : 'Info';
+    
+    div.innerHTML = `
+      <div class="flashcard flip card rounded-2xl p-3">
+        <div class="flip-inner">
+          <div class="face front flex flex-col justify-center items-center">
+            <div class="absolute top-2 right-2 text-xs opacity-70">${typeBadge}</div>
+            <div class="text-xs text-[var(--muted)] mb-2">Question</div>
+            <div class="text-center font-medium px-4">${escapeHtml(fc.q)}</div>
+          </div>
+          <div class="face back flex flex-col justify-start items-center overflow-y-auto p-3">
+            <div class="text-xs text-[var(--accent)] mb-1 font-medium">${typeLabel}</div>
+            <div class="text-xs text-[var(--muted)] mb-2">Answer</div>
+            <div class="text-center text-sm leading-relaxed px-2">${escapeHtml(displayAnswer)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    const flashcard = div.querySelector('.flashcard');
+    flashcard.addEventListener('mouseenter', function() {
+      this.classList.add('flipped');
+    });
+    flashcard.addEventListener('mouseleave', function() {
+      this.classList.remove('flipped');
+    });
+    
+    flashcardGrid.appendChild(div);
+  });
+}
+
+function renderMCQ() {
+  const c = document.getElementById('mcqContainer');
+  if (!c) return;
+  
+  c.innerHTML = '';
+  
+  if (demoMCQs.length === 0) {
+    c.innerHTML = `
+      <div class="text-center p-8 rounded-xl border border-white/10 bg-black/10">
+        <div class="text-4xl mb-4">🎯</div>
+        <div class="text-lg font-medium mb-2">No MCQs Yet</div>
+        <div class="text-sm text-[var(--muted)]">Search for a topic to generate questions!</div>
+      </div>`;
+    return;
+  }
+
+  const item = demoMCQs[mcqIdx % demoMCQs.length];
+  
+  const q = document.createElement('div');
+  q.className = 'text-lg font-medium mb-4 p-4 rounded-xl bg-white/5';
+  q.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-[var(--muted)]">Question ${(mcqIdx % demoMCQs.length) + 1} of ${demoMCQs.length}</span>
+    </div>
+    <div>${escapeHtml(item.q)}</div>
+  `;
+  c.appendChild(q);
+
+  const list = document.createElement('div');
+  list.className = 'grid md:grid-cols-2 gap-3';
+
+  // ✅ FIX: Proper option labels (A, B, C, D)
+  const optionLabels = ['A', 'B', 'C', 'D'];
+
+  item.opts.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'px-4 py-3 rounded-xl border border-white/10 hover:bg-white/5 text-left bg-transparent mcq-option transition-all';
+    b.innerHTML = `
+      <div class="flex items-start gap-3">
+        <span class="flex-shrink-0 w-6 h-6 rounded-full border border-white/20 flex items-center justify-center text-xs font-bold">
+          ${optionLabels[i]}
+        </span>
+        <span class="flex-1">${escapeHtml(opt)}</span>
+      </div>
+    `;
+    b.setAttribute('data-index', String(i));
+    b.setAttribute('data-correct', String(item.ans));
+    
+    b.addEventListener('click', function() {
+      const alreadyAnswered = list.querySelector('.mcq-option.correct, .mcq-option.wrong');
+      if (alreadyAnswered) return;
+      
+      const selectedIdx = parseInt(this.dataset.index);
+      const correctIdx = parseInt(this.dataset.correct);
+      
+      list.querySelectorAll('.mcq-option').forEach((btn, idx) => {
+        btn.style.pointerEvents = 'none';
+        if (idx === correctIdx) {
+          btn.classList.add('correct');
+          btn.style.background = 'rgba(34, 197, 94, 0.2)';
+          btn.style.borderColor = 'rgb(34, 197, 94)';
+        }
+      });
+      
+      if (selectedIdx === correctIdx) {
+        this.classList.add('correct');
+        mcqScore++;
+        showNotification('✅ Correct!', 1500);
+      } else {
+        this.classList.add('wrong');
+        this.style.background = 'rgba(239, 68, 68, 0.2)';
+        this.style.borderColor = 'rgb(239, 68, 68)';
+        showNotification('❌ Incorrect', 2000);
+      }
+      
+      mcqAttempts++;
+      updateMCQScore();
+      
+      setTimeout(() => {
+        const nextBtn = document.getElementById('nextMcq');
+        if (nextBtn) {
+          nextBtn.classList.add('pulse-animation');
+          nextBtn.textContent = mcqIdx + 1 < demoMCQs.length ? 'Next Question →' : '↻ Restart Quiz';
+        }
+      }, 1000);
+    });
+    
+    list.appendChild(b);
+  });
+
+  c.appendChild(list);
+
+  const progress = document.createElement('div');
+  progress.className = 'mt-4 p-3 rounded-xl bg-black/20';
+  const answeredCount = mcqAttempts;
+  const progressPercent = (answeredCount / demoMCQs.length) * 100;
+  progress.innerHTML = `
+    <div class="flex justify-between items-center mb-2 text-xs text-[var(--muted)]">
+      <span>Progress</span>
+      <span>${answeredCount} / ${demoMCQs.length}</span>
+    </div>
+    <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+      <div class="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] rounded-full transition-all duration-500" 
+           style="width: ${progressPercent}%"></div>
+    </div>
+  `;
+  c.appendChild(progress);
+}
+
+function updateMCQScore() {
+  const scoreEl = document.getElementById('mcqScore');
+  if (scoreEl && mcqAttempts > 0) {
+    const percentage = Math.round((mcqScore / mcqAttempts) * 100);
+    scoreEl.innerHTML = `
+      <div class="text-sm">
+        <span class="font-medium">Score:</span> 
+        <span class="text-[var(--accent)] font-bold">${mcqScore}/${mcqAttempts}</span>
+        <span class="text-[var(--muted)] ml-2">(${percentage}%)</span>
+      </div>
+    `;
+  }
+}
+
+function renderKeywords() {
+  const list = document.getElementById('kwList');
+  if (!list) return;
+  
+  list.innerHTML = '';
+  
+  if (extractedKeywords.length === 0) {
+    list.innerHTML = `
+      <div class="col-span-2 text-center p-8 rounded-xl border border-white/10 bg-black/10">
+        <div class="text-4xl mb-4">🔑</div>
+        <div class="text-lg font-medium mb-2">No Keywords Yet</div>
+        <div class="text-sm text-[var(--muted)]">Search for a topic to extract keywords!</div>
+      </div>`;
+    return;
+  }
+  
+  const header = document.createElement('div');
+  header.className = 'col-span-2 mb-4';
+  header.innerHTML = `
+    <div class="flex items-center justify-between">
+      <span class="text-lg font-semibold">🔑 Key Terms</span>
+      <span class="text-xs text-[var(--muted)]">${extractedKeywords.length} keywords</span>
+    </div>
+  `;
+  list.appendChild(header);
+  
+  extractedKeywords.forEach(({ k, d }) => {
+    const card = document.createElement('div');
+    card.className = 'rounded-xl border border-white/10 p-4 bg-black/10 hover:bg-white/5 transition-all';
+    card.innerHTML = `
+      <div class="font-medium mb-2 text-[var(--accent)]">${escapeHtml(k)}</div>
+      <div class="text-sm text-[var(--text)] leading-relaxed">${escapeHtml(d)}</div>`;
+    list.appendChild(card);
+  });
+}
+
+function renderTest() {
+  const area = document.getElementById('testArea');
+  if (!area) return;
+  
+  area.innerHTML = '';
+  
+  if (demoMCQs.length === 0) {
+    area.innerHTML = `
+      <div class="text-center p-8 rounded-xl border border-white/10 bg-black/10">
+        <div class="text-4xl mb-4">📝</div>
+        <div class="text-lg font-medium mb-2">No Test Available</div>
+        <div class="text-sm text-[var(--muted)]">Generate MCQs first!</div>
+      </div>`;
+    return;
+  }
+  
+  // ✅ FIX: Proper option labels (A, B, C, D)
+  const optionLabels = ['A', 'B', 'C', 'D'];
+  
+  demoMCQs.forEach((it, idx) => {
+    const sec = document.createElement('div');
+    sec.className = 'rounded-xl border border-white/10 p-4 bg-black/10 mb-4 test-question';
+    sec.dataset.questionIndex = idx;
+    sec.dataset.correctAnswer = it.ans;
+
+    const q = document.createElement('div');
+    q.className = 'font-medium mb-3 text-base';
+    q.textContent = (idx + 1) + '. ' + it.q;
+    sec.appendChild(q);
+
+    const list = document.createElement('div');
+    list.className = 'grid md:grid-cols-2 gap-2';
+
+    it.opts.forEach((opt, i) => {
+      const label = document.createElement('label');
+      label.className = 'flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 hover:bg-white/5 cursor-pointer transition-all test-option';
+      label.dataset.optionIndex = i;
+      
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'q' + idx;
+      input.value = String(i);
+      input.className = 'accent-[var(--accent)]';
+      
+      const span = document.createElement('span');
+      span.className = 'text-sm flex items-start gap-2';
+      span.innerHTML = `
+        <span class="font-bold">${optionLabels[i]}.</span>
+        <span>${escapeHtml(opt)}</span>
+      `;
+      
+      label.appendChild(input);
+      label.appendChild(span);
+      list.appendChild(label);
+    });
+
+    sec.appendChild(list);
+    area.appendChild(sec);
+  });
+}
+
+/* =====================================================================
+   HELPER FUNCTIONS
+   ===================================================================== */
+function escapeHtml(str) {
+  if (typeof str !== 'string') return String(str || '');
+  const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
+  return str.replace(/[&<>"']/g, m => map[m]);
+}
+
+function showNotification(message, duration = 3000) {
+  try {
+    document.querySelectorAll('.smartlearn-notification').forEach(n => n.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = 'smartlearn-notification fixed top-20 right-4 bg-[var(--panel)] border-2 border-[var(--accent)] text-[var(--text)] px-5 py-3 rounded-xl shadow-2xl z-[10004]';
+    notification.style.animation = 'slideIn 0.3s ease-out';
+    notification.style.maxWidth = '350px';
+    notification.style.fontWeight = '500';
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      notification.style.transform = 'translateX(100%)';
+      notification.style.transition = 'all 0.3s ease-out';
+      setTimeout(() => notification.remove(), 300);
+    }, duration);
+  } catch (error) {}
+}
+
+function updateHeaderStats() {
+  const header = document.getElementById('pageHeader');
+  if (!header) return;
+  
+  try {
+    const existingBadges = header.querySelector('.stats-badges');
+    if (existingBadges) existingBadges.remove();
+    
+    const badgesContainer = document.createElement('div');
+    badgesContainer.className = 'stats-badges flex items-center gap-2 mr-2';
+    badgesContainer.innerHTML = `
+      <div class="px-3 py-1 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-xs flex items-center gap-1">
+        <span>📚</span>
+        <span class="font-medium">${flashcardsData.length}</span>
+        <span class="text-[var(--muted)]">cards</span>
+      </div>
+      <div class="px-3 py-1 rounded-full border border-[var(--accent-2)]/30 bg-[var(--accent-2)]/10 text-xs flex items-center gap-1">
+        <span>🎯</span>
+        <span class="font-medium">${demoMCQs.length}</span>
+        <span class="text-[var(--muted)]">MCQs</span>
+      </div>
+    `;
+    
+    const themeBadge = header.querySelector('#themeBadge');
+    if (themeBadge && themeBadge.parentNode) {
+      themeBadge.parentNode.insertBefore(badgesContainer, themeBadge);
+    }
+  } catch (error) {}
+}
+
+function showFlashcardPopup() {
+  const popup = document.createElement('div');
+  popup.className = `fixed right-4 top-20 bg-[var(--panel)] border-2 border-[var(--accent)] 
+    rounded-2xl p-6 shadow-2xl z-[9999] animate-slideIn`;
+  popup.style.minWidth = '300px';
+  popup.innerHTML = `
+    <div class="text-center">
+      <div class="text-4xl mb-3">📚</div>
+      <div class="font-bold text-lg mb-1">Flashcards Generated!</div>
+      <div class="text-sm text-[var(--muted)]">✓ Study cards created</div>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  
+  setTimeout(() => {
+    popup.style.opacity = '0';
+    popup.style.transform = 'translateX(400px)';
+    popup.style.transition = 'all 0.3s ease-out';
+    setTimeout(() => popup.remove(), 300);
+  }, 2000);
+}
+
+function showMCQPopup() {
+  const popup = document.createElement('div');
+  popup.className = `fixed right-4 top-20 bg-[var(--panel)] border-2 border-[var(--accent-2)] 
+    rounded-2xl p-6 shadow-2xl z-[9999] animate-slideIn`;
+  popup.style.minWidth = '300px';
+  popup.innerHTML = `
+    <div class="text-center">
+      <div class="text-4xl mb-3">🎯</div>
+      <div class="font-bold text-lg mb-1">MCQs Generated!</div>
+      <div class="text-sm text-[var(--muted)]">✓ Quiz questions ready</div>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  
+  setTimeout(() => {
+    popup.style.opacity = '0';
+    popup.style.transform = 'translateX(400px)';
+    popup.style.transition = 'all 0.3s ease-out';
+    setTimeout(() => popup.remove(), 300);
+  }, 2000);
+}
+
+function showKeywordsPopup() {
+  const popup = document.createElement('div');
+  popup.className = `fixed right-4 top-20 bg-[var(--panel)] border-2 border-[var(--accent)] 
+    rounded-2xl p-6 shadow-2xl z-[9999] animate-slideIn`;
+  popup.style.minWidth = '300px';
+  popup.innerHTML = `
+    <div class="text-center">
+      <div class="text-4xl mb-3">🔑</div>
+      <div class="font-bold text-lg mb-1">Keywords Extracted!</div>
+      <div class="text-sm text-[var(--muted)]">✓ Key terms identified</div>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  
+  setTimeout(() => {
+    popup.style.opacity = '0';
+    popup.style.transform = 'translateX(400px)';
+    popup.style.transition = 'all 0.3s ease-out';
+    setTimeout(() => popup.remove(), 300);
+  }, 2000);
+}
+
+/* =====================================================================
+   SEARCH HISTORY FUNCTIONS
+   ===================================================================== */
+async function saveSearchHistory(query, flashcardCount, mcqCount) {
+  // ✅ FIX: Check BOTH sessionStorage and localStorage
+  const userStr = sessionStorage.getItem('smartlearn_current_user') || localStorage.getItem('smartlearn_current_user');
+  
+  if (!userStr) {
+    console.log('⚠️ No user logged in, history not saved');
+    return;
+  }
+  
+  const user = JSON.parse(userStr);
+  const userId = user.id || user.email;
+  
+  const historyItem = {
+    id: Date.now(),
+    query: query,
+    flashcard_count: flashcardCount,
+    mcq_count: mcqCount,
+    timestamp: new Date().toISOString(),
+    userId: userId
+  };
+
+  try {
+    const response = await fetch('/history/save/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        query: query,
+        flashcard_count: flashcardCount,
+        mcq_count: mcqCount
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      console.log('✅ History saved to backend:', query);
+    }
+  } catch (error) {
+    console.log('⚠️ Backend unavailable, using localStorage');
+  }
+  
+  const historyKey = `smartlearn_history_${userId}`;
+  let localHistory = [];
+  try {
+    const saved = localStorage.getItem(historyKey);
+    if (saved) localHistory = JSON.parse(saved);
+  } catch (e) {}
+  
+  localHistory.unshift(historyItem);
+  
+  if (localHistory.length > 10) {
+    localHistory = localHistory.slice(0, 10);
+  }
+  
+  localStorage.setItem(historyKey, JSON.stringify(localHistory));
+  console.log('✅ History saved to localStorage for user:', userId);
+  
+  await loadSearchHistory();
+}
+
+async function loadSearchHistory() {
+  // ✅ FIX: Check BOTH sessionStorage and localStorage
+  const userStr = sessionStorage.getItem('smartlearn_current_user') || localStorage.getItem('smartlearn_current_user');
+  
+  if (!userStr) {
+    console.log('⚠️ No user logged in');
+    renderHistorySidebar([]);
+    return;
+  }
+  
+  const user = JSON.parse(userStr);
+  const userId = user.id || user.email;
+  const historyKey = `smartlearn_history_${userId}`;
+  
+  let historyData = [];
+  
+  try {
+    const response = await fetch('/history/get/', {
+      credentials: 'same-origin'
+    });
+    const data = await response.json();
+    
+    if (data.success && data.history && data.history.length > 0) {
+      historyData = data.history;
+      localStorage.setItem(historyKey, JSON.stringify(historyData));
+      console.log('✅ History loaded from backend:', historyData.length);
+    }
+  } catch (error) {
+    console.log('⚠️ Backend unavailable, loading from localStorage');
+  }
+  
+  if (historyData.length === 0) {
+    try {
+      const saved = localStorage.getItem(historyKey);
+      if (saved) {
+        historyData = JSON.parse(saved);
+        console.log('✅ History loaded from localStorage:', historyData.length);
+      }
+    } catch (e) {
+      console.error('Error loading from localStorage:', e);
+    }
+  }
+  
+  renderHistorySidebar(historyData);
+}
+
+function renderHistorySidebar(historyList) {
+  const historyListDiv = document.getElementById('historyList');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  
+  if (!historyListDiv) {
+    console.error('❌ historyList element not found!');
+    return;
+  }
+  
+  historyListDiv.innerHTML = '';
+  
+  if (!historyList || historyList.length === 0) {
+    historyListDiv.innerHTML = '<div class="px-2 py-4 text-xs text-[var(--muted)] text-center opacity-60">No searches yet</div>';
+    if (clearAllBtn) clearAllBtn.classList.add('hidden');
+    return;
+  }
+  if (clearAllBtn) clearAllBtn.classList.remove('hidden');
+  
+  historyList.forEach(item => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'history-item-wrapper';
+    
+    const btn = document.createElement('button');
+    btn.className = 'history-item';
+    
+    btn.innerHTML = `
+      <div class="history-item-content">
+        <div class="history-query" title="${escapeHtml(item.query)}">${escapeHtml(item.query)}</div>
+        <div class="history-meta">📚 ${item.flashcard_count} · 🎯 ${item.mcq_count}</div>
+      </div>
+      <button class="delete-history-btn" title="Delete">×</button>
+    `;
+    
+    btn.addEventListener('click', (e) => {
+      if (e.target.classList.contains('delete-history-btn')) return;
+      
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.value = item.query;
+        document.getElementById('searchBtn')?.click();
+      }
+      
+      const searchNavBtn = document.querySelector('[data-section="search"]');
+      if (searchNavBtn) searchNavBtn.click();
+    });
+    
+    const deleteBtn = btn.querySelector('.delete-history-btn');
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteHistory(item.id, e);
+    });
+    
+    wrapper.appendChild(btn);
+    historyListDiv.appendChild(wrapper);
+  });
+}
+
+async function deleteHistory(historyId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  
+  try {
+    const response = await fetch(`/history/delete/${historyId}/`, {
+      method: 'POST',
+      credentials: 'same-origin'
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      console.log('✅ Deleted from backend');
+    }
+  } catch (error) {
+    console.log('⚠️ Backend unavailable, deleting from localStorage');
+  }
+  
+  const userStr = sessionStorage.getItem('smartlearn_current_user') || localStorage.getItem('smartlearn_current_user');
+  if (userStr) {
+    const user = JSON.parse(userStr);
+    const userId = user.id || user.email;
+    const historyKey = `smartlearn_history_${userId}`;
+    
+    try {
+      let localHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+      console.log('🔵 History before delete:', localHistory.length);
+      
+      localHistory = localHistory.filter(item => item.id !== historyId);
+      console.log('🔵 History after delete:', localHistory.length);
+      
+      localStorage.setItem(historyKey, JSON.stringify(localHistory));
+      console.log('✅ Deleted from localStorage');
+    } catch (e) {
+      console.error('Error deleting from localStorage:', e);
+    }
+  }
+  
+  await loadSearchHistory();
+  showNotification('🗑️ Deleted from history');
+}
+
+async function clearAllHistory() {
+  if (!confirm('Clear all search history? This cannot be undone.')) return;
+  
+  try {
+    const response = await fetch('/history/clear/', {
+      method: 'POST',
+      credentials: 'same-origin'
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      console.log('✅ Backend history cleared');
+    }
+  } catch (error) {
+    console.log('⚠️ Backend unavailable, clearing localStorage');
+  }
+  
+  const userStr = sessionStorage.getItem('smartlearn_current_user') || localStorage.getItem('smartlearn_current_user');
+  if (userStr) {
+    const user = JSON.parse(userStr);
+    const userId = user.id || user.email;
+    const historyKey = `smartlearn_history_${userId}`;
+    
+    console.log('🔵 Clearing history key:', historyKey);
+    localStorage.removeItem(historyKey);
+    console.log('✅ localStorage cleared for user:', userId);
+  }
+  
+  await loadSearchHistory();
+  showNotification('🗑️ All history cleared');
+}
+
+/* =====================================================================
+   MAIN INITIALIZATION
+   ===================================================================== */
+function initializeApp() {
+  loadFlashcards();
+  loadMCQs();
+  
+  applyTheme(0);
+  renderFlashcards();
+  renderMCQ();
+  renderKeywords();
+  renderTest();
+  updateHeaderStats();
+  loadSearchHistory();
+  
+  const searchBtn = document.getElementById('searchBtn');
+  const searchInput = document.getElementById('searchInput');
+  const searchWrapper = document.getElementById('searchWrapper');
+  const searchHeading = document.getElementById('searchHeading');
+  const searchResult = document.getElementById('searchResult');
+
+  if (searchBtn && searchInput) {
+    searchBtn.addEventListener('mousedown', (ev) => ev.preventDefault());
+
+    searchBtn.addEventListener('click', async () => {
+      setTimeout(() => {
+        try {
+          searchInput.focus();
+          const len = searchInput.value.length;
+          if (typeof searchInput.setSelectionRange === 'function') {
+            searchInput.setSelectionRange(len, len);
+          }
+        } catch (e) {}
+      }, 0);
+
+      const query = searchInput.value.trim();
+      
+      if (!query) {
+        searchResult.innerHTML = `<div class="rounded-xl border border-white/10 p-3 bg-black/10 text-[var(--text)]">Please type a concept to search.</div>`;
+        if (searchWrapper) searchWrapper.classList.add('expanded');
+        if (searchHeading) searchHeading.classList.add('expanded');
+        if (searchResult) {
+          searchResult.classList.add('expanded');
+          searchResult.classList.remove('opacity-0', 'pointer-events-none');
+        }
+        return;
+      }
+
+      showNotification(`✨ Generating content for "${query}"!`, 2000);
+      clearAllData(query);
+
+      if (searchWrapper) searchWrapper.classList.add('expanded');
+      if (searchHeading) searchHeading.classList.add('expanded');
+      if (searchResult) {
+        searchResult.classList.add('expanded');
+        searchResult.classList.remove('opacity-0', 'pointer-events-none');
+      }
+
+      searchResult.innerHTML = `<div class="rounded-xl border border-white/10 p-3 bg-black/10 text-[var(--text)]">🔍 Generating fresh content for "${escapeHtml(query)}"...</div>`;
+
+      try {
+        const url = `/ai/?prompt=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        
+        if (!res.ok) throw new Error('Network error');
+        
+        const data = await res.json();
+        const aiResponse = (data.response || '').trim() || 'Answer coming soon...';
+
+        // ✅ FIX: Use marked.js to convert markdown to HTML properly
+        let html = aiResponse;
+        if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+          html = marked.parse(aiResponse);
+        } else {
+          // Fallback: basic markdown conversion
+          html = aiResponse
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+          html = '<p>' + html + '</p>';
+        }
+        
+        searchResult.innerHTML = '';
+        const inner = document.createElement('div');
+        inner.id = 'searchResultInner';
+        inner.className = 'p-4 overflow-auto max-h-72 text-left space-y-4';
+        inner.innerHTML = html;
+        searchResult.appendChild(inner);
+        searchResult.scrollTop = 0;
+
+        // ✅ AI-powered generation
+        await generateMultipleFlashcards(query, aiResponse);
+        await generateMCQs(query, aiResponse);
+        await extractKeywords(query, aiResponse);
+        
+        await saveSearchHistory(query, flashcardsData.length, demoMCQs.length);
+        
+      } catch (err) {
+        console.error('Search error:', err);
+        searchResult.innerHTML = `<div class="rounded-xl border border-white/10 p-3 bg-black/10 text-[var(--text)]">❌ Error. Please try again.</div>`;
+      }
+    });
+
+    searchInput.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        searchBtn.click();
+      }
+    });
+  }
+
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('🔵 Clear All button clicked');
+      await clearAllHistory();
+    });
+    console.log('✅ Clear All History handler attached');
+  } else {
+    console.warn('⚠️ clearAllBtn element not found');
+  }
+
+  const genStoryBtn = document.getElementById('genStory');
+  const conceptInput = document.getElementById('conceptInput');
+  const toneSelect = document.getElementById('toneSelect');
+  const storyOutput = document.getElementById('storyOutput');
+  
+  if (genStoryBtn && conceptInput && storyOutput) {
+    genStoryBtn.addEventListener('click', async () => {
+      const concept = conceptInput.value.trim();
+      const tone = toneSelect.value;
+      
+      if (!concept) {
+        showNotification('Please enter a concept first!');
+        return;
+      }
+      
+      storyOutput.innerHTML = '<div class="text-[var(--muted)]">✨ Generating story...</div>';
+      
+      try {
+        const prompt = `Create a ${tone} story about: ${concept}`;
+        const url = `/ai/?prompt=${encodeURIComponent(prompt)}`;
+        const res = await fetch(url);
+        
+        if (!res.ok) throw new Error('Network error');
+        
+        const data = await res.json();
+        let html = marked.parse(data.response || 'Story generation failed');
+        
+        storyOutput.innerHTML = html;
+        showNotification('📖 Story generated!', 2000);
+      } catch (err) {
+        console.error('Story error:', err);
+        storyOutput.innerHTML = '<div class="text-red-400">❌ Error generating story. Try again.</div>';
+      }
+    });
+  }
+
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const sections = document.querySelectorAll('main > section');
+
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      navBtns.forEach(b => b.classList.remove('active-nav'));
+      sections.forEach(s => s.classList.add('hidden'));
+      
+      const target = btn.dataset.section;
+      const active = document.getElementById('section-' + target);
+      
+      if (active) {
+        active.classList.remove('hidden');
+        if (target === 'search') {
+          const searchWrapper = document.getElementById('searchWrapper');
+          if (searchWrapper) searchWrapper.classList.add('expanded');
+        }
+        if (target === 'flashcards') renderFlashcards();
+        if (target === 'mcqs') renderMCQ();
+        if (target === 'test') renderTest();
+        if (target === 'keywords') renderKeywords();
+      }
+      
+      btn.classList.add('active-nav');
+      
+      if (document.body.classList.contains('sidebar-open')) {
+        document.body.classList.remove('sidebar-open');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        if (sidebarBackdrop) sidebarBackdrop.classList.add('hidden');
+      }
+    });
+  });
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleSidebarBtn = document.getElementById('toggleSidebar');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+  if (toggleSidebarBtn && sidebar) {
+    toggleSidebarBtn.addEventListener('click', () => {
+      const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+      
+      if (isCollapsed) {
+        sidebar.classList.remove('sidebar-collapsed');
+        sidebar.classList.add('sidebar-expanded');
+        toggleSidebarBtn.setAttribute('aria-expanded', 'true');
+      } else {
+        sidebar.classList.remove('sidebar-expanded');
+        sidebar.classList.add('sidebar-collapsed');
+        toggleSidebarBtn.setAttribute('aria-expanded', 'false');
+      }
+      
+      if (window.innerWidth <= 768) {
+        const isOpen = document.body.classList.toggle('sidebar-open');
+        if (sidebarBackdrop) {
+          if (isOpen) sidebarBackdrop.classList.remove('hidden');
+          else sidebarBackdrop.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  if (sidebarBackdrop) {
+    sidebarBackdrop.addEventListener('click', () => {
+      document.body.classList.remove('sidebar-open');
+      sidebarBackdrop.classList.add('hidden');
+    });
+  }
+
+  const changeThemeBtn = document.getElementById('changeTheme');
+  const changeThemeIcon = document.getElementById('changeThemeIcon');
+
+  if (changeThemeBtn) {
+    changeThemeBtn.addEventListener('click', () => {
+      applyTheme((currentThemeIdx + 1) % themes.length);
+    });
+  }
+  
+  if (changeThemeIcon) {
+    changeThemeIcon.addEventListener('click', () => {
+      applyTheme((currentThemeIdx + 1) % themes.length);
+    });
+  }
+
+  const nextMcqBtn = document.getElementById('nextMcq');
+  if (nextMcqBtn) {
+    nextMcqBtn.addEventListener('click', () => {
+      mcqIdx++;
+      
+      if (mcqIdx >= demoMCQs.length) {
+        if (confirm(`Quiz completed! Score: ${mcqScore}/${mcqAttempts} (${Math.round(mcqScore/mcqAttempts*100)}%)\n\nRestart?`)) {
+          mcqIdx = 0;
+          mcqScore = 0;
+          mcqAttempts = 0;
+          updateMCQScore();
+        } else {
+          mcqIdx = demoMCQs.length - 1;
+        }
+      }
+      
+      nextMcqBtn.classList.remove('pulse-animation');
+      nextMcqBtn.textContent = 'Next Question';
+      renderMCQ();
+    });
+  }
+
+  // ✅ FIX: Reset test when submitting
+  const submitTestBtn = document.getElementById('submitTest');
+  if (submitTestBtn) {
+    submitTestBtn.addEventListener('click', () => {
+      const testQuestions = document.querySelectorAll('.test-question');
+      let correct = 0;
+      const total = testQuestions.length;
+      
+      testQuestions.forEach((questionDiv) => {
+        const correctAnswer = parseInt(questionDiv.dataset.correctAnswer);
+        const selectedInput = questionDiv.querySelector('input[type="radio"]:checked');
+        const allOptions = questionDiv.querySelectorAll('.test-option');
+        
+        allOptions.forEach((option) => {
+          const optionIndex = parseInt(option.dataset.optionIndex);
+          
+          if (optionIndex === correctAnswer) {
+            option.style.backgroundColor = 'rgba(34, 197, 94, 0.2)';
+            option.style.borderColor = 'rgb(34, 197, 94)';
+            option.style.fontWeight = '600';
+          }
+          
+          if (selectedInput && parseInt(selectedInput.value) === optionIndex) {
+            if (optionIndex === correctAnswer) {
+              correct++;
+            } else {
+              option.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+              option.style.borderColor = 'rgb(239, 68, 68)';
+              option.style.fontWeight = '600';
+            }
+          }
+          
+          const input = option.querySelector('input');
+          if (input) input.disabled = true;
+          option.style.cursor = 'not-allowed';
+        });
+      });
+      
+      const pct = Math.round((correct / total) * 100);
+      const tr = document.getElementById('testResult');
+      
+      if (tr) {
+        tr.innerHTML = `
+          <div class="text-center p-4 rounded-xl border-2 ${pct >= 60 ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'}">
+            <div class="text-2xl font-bold mb-2">${correct}/${total}</div>
+            <div class="text-lg">${pct}% Score</div>
+            <div class="text-sm mt-2 text-[var(--muted)]">${pct >= 60 ? '✅ Great job!' : '❌ Keep practicing!'}</div>
+            <button id="retakeTest" class="mt-3 px-4 py-2 rounded-xl btn">↻ Retake Test</button>
+          </div>
+        `;
+        
+        // ✅ FIX: Add retake functionality
+        const retakeBtn = document.getElementById('retakeTest');
+        if (retakeBtn) {
+          retakeBtn.addEventListener('click', () => {
+            renderTest();
+            tr.innerHTML = '';
+            submitTestBtn.disabled = false;
+            submitTestBtn.style.opacity = '1';
+            submitTestBtn.style.cursor = 'pointer';
+          });
+        }
+      }
+      
+      showNotification(`📊 Test completed! Score: ${correct}/${total} (${pct}%)`);
+      submitTestBtn.disabled = true;
+      submitTestBtn.style.opacity = '0.5';
+      submitTestBtn.style.cursor = 'not-allowed';
+    });
+  }
+
+  console.log('✅ SmartLearn initialized!');
+}
+
+function injectCustomStyles() {
+  const style = document.createElement('style');
+  style.id = 'smartlearn-custom-styles';
+  style.textContent = `
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .pulse-animation {
+      animation: pulse 1s ease-in-out 3;
+    }
+    
+    .mcq-option.selected, .tab-active, .nav-btn.active-nav {
+      background: rgba(245,215,110,0.2) !important;
+      border-color: var(--accent) !important;
+    }
+    
+    .flashcard-wrapper {
+      position: relative;
+      z-index: 10;
+    }
+    
+    .flashcard {
+      position: relative;
+      z-index: 5;
+      cursor: default;
+    }
+    
+    .flashcard:hover .flip-inner {
+      transform: rotateY(180deg);
+    }
+    
+    .flip-inner {
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    
+    .flashcard.flipped .flip-inner {
+      transform: rotateY(180deg);
+    }
+  `;
+  
+  const existing = document.getElementById('smartlearn-custom-styles');
+  if (existing) existing.remove();
+  
+  document.head.appendChild(style);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    injectCustomStyles();
+    initializeApp();
+  });
+} else {
+  injectCustomStyles();
+  initializeApp();
+}
+
+window.SmartLearn = {
+  version: '3.6.0',
+  flashcardsData: flashcardsData,
+  mcqsData: demoMCQs,
+  currentTopic: () => currentTopic,
+  clearAll: () => clearAllData(null)
+};
+
+window.loadSearchHistory = loadSearchHistory;
+window.deleteHistory = deleteHistory;
+window.clearAllHistory = clearAllHistory;
