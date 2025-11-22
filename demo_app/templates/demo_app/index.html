@@ -40,7 +40,7 @@
           <path d="M4 7h16M4 12h12M4 17h16"></path> 
         </svg> 
       </button> 
-      <img src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}"> <alt="logo" class="brand-logo w-8 h-8"> 
+      <img src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}" alt="logo" class="brand-logo" style="width: 32px; height: 32px;">
       <div class="brand-text font-semibold text-lg md:text-xl grad-text">SmartLearn</div>
     </div>
 
@@ -142,7 +142,7 @@ document.getElementById('historyToggle')?.addEventListener('click', function() {
     <header id="pageHeader" class="flex items-center justify-between mb-4 relative">
       <div class="header-left relative z-10">
         <h1 class="text-2xl md:text-3xl font-semibold flex items-center gap-3">
-          <img class="logo w-8 h-8" src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}">
+          <img class="logo" src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}" alt="logo" style="width: 32px; height: 32px;">
           Welcome to <span class="grad-text">SmartLearn</span>
         </h1>
         <p class="text-sm text-[var(--muted)]">Pick a tool from the left to get started.  </p>
