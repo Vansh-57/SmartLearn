@@ -1,0 +1,682 @@
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartLearn</title>
+<!-- include marked.js in your HTML head -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: {
+            glow: '0 0 0.5rem rgba(255,255,255,0.4), 0 0 1rem rgba(255,200,0,0.25)'
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="{% static 'Demo_app/css/style.css'%}">
+</head>
+<body id="app" class="thematic min-h-screen flex">
+  
+</button>
+<!-- SIDEBAR -->
+<aside id="sidebar" class="sidebar-expanded">
+  <div class="sidebar-card card h-full rounded-2xl flex flex-col"> 
+    <div class="sidebar-header relative flex items-center gap-3 p-3 border-b border-white/10 h-24">
+      <button id="toggleSidebar" class="toggle-pill" aria-expanded="true" title="Collapse / Expand sidebar"> 
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"> 
+          <path d="M4 7h16M4 12h12M4 17h16"></path> 
+        </svg> 
+      </button> 
+      <img src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}" alt="logo" class="brand-logo w-8 h-8"> 
+      <div class="brand-text font-semibold text-lg md:text-xl grad-text">SmartLearn</div>
+    </div>
+
+    <nav class="flex-1 overflow-auto py-3">
+      <button data-section="search" class="nav-btn" aria-controls="section-search">
+        <span class="dot" style="background:var(--accent)"></span>
+        <span class="truncate">Search</span>
+      </button>
+      <button data-section="story" class="nav-btn" aria-controls="section-story">
+        <span class="dot" style="background:var(--accent)"></span>
+        <span class="truncate">Concept ➜ Story</span>
+      </button>
+      <button data-section="flashcards" class="nav-btn" aria-controls="section-flashcards">
+        <span class="dot" style="background:var(--accent)"></span>
+        <span class="truncate">Flashcards</span>
+      </button>
+      <button data-section="mcqs" class="nav-btn" aria-controls="section-mcqs">
+        <span class="dot" style="background:var(--accent)"></span>
+        <span class="truncate">MCQs (Practice)</span>
+      </button>
+      <button data-section="keywords" class="nav-btn" aria-controls="section-keywords">
+        <span class="dot" style="background:var(--accent)"></span>
+        <span class="truncate">Keywords</span>
+      </button>
+      <button data-section="test" class="nav-btn" aria-controls="section-test">
+        <span class="dot" style="background:var(--accent)"></span>
+        <span class="truncate">MCQ Test</span>
+      </button>
+
+      <!-- ✨ SEARCH HISTORY SECTION - Collapsible & Elegant ✨ -->
+      <div class="mt-3 px-2">
+        <button id="historyToggle" class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-[var(--muted)] hover:text-[var(--text)] rounded-lg hover:bg-white/5 transition-all">
+          <span class="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Recent Searches
+          </span>
+          <svg id="historyChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition-transform">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        
+        <div id="historyPanel" class="mt-1 space-y-1 max-h-0 overflow-hidden transition-all duration-300">
+          <div id="historyList" class="space-y-1">
+            <!-- History items populated by JavaScript -->
+          </div>
+          <button id="clearAllBtn" class="w-full text-xs text-[var(--accent)] hover:text-[var(--accent-2)] py-2 hidden transition-colors">
+            Clear All History
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="theme-action p-3 border-t border-white/10 flex items-center justify-between">
+      <button id="changeTheme" class="theme-btn w-full py-2 rounded-xl btn playful flex items-center gap-3">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v1M12 21v1M4.2 4.2l.7.7M19.1 19.1l.7.7M2 12h1M21 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7" />
+        </svg>
+        <span class="theme-label">Change Theme</span>
+      </button>
+
+      <button id="changeThemeIcon" class="theme-icon hidden p-2 rounded-lg btn" aria-label="Change Theme">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 2v1M12 21v1M4.2 4.2l.7.7M19.1 19.1l.7.7M2 12h1M21 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="px-3 pb-3">
+      <div id="currentThemeName" class="text-xs text-[var(--muted)] mt-2 text-center"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- mobile backdrop -->
+<div id="sidebarBackdrop" class="sidebar-backdrop hidden" aria-hidden="true"></div>
+
+<script>
+// ✨ History Panel Toggle Script
+document.getElementById('historyToggle')?.addEventListener('click', function() {
+  const panel = document.getElementById('historyPanel');
+  const chevron = document.getElementById('historyChevron');
+  
+  if (panel.style.maxHeight === '300px') {
+    panel.style.maxHeight = '0px';
+    chevron.style.transform = 'rotate(0deg)';
+  } else {
+    panel.style.maxHeight = '300px';
+    chevron.style.transform = 'rotate(180deg)';
+  }
+});
+</script>
+  <!-- MAIN (sparkles are created inside #main) -->
+  <main id="main" class="flex-1 p-4 md:p-6 relative">
+    <header id="pageHeader" class="flex items-center justify-between mb-4 relative">
+      <div class="header-left relative z-10">
+        <h1 class="text-2xl md:text-3xl font-semibold flex items-center gap-3">
+          <img class="logo w-8 h-8" src="{% static 'Demo_app/image/bulb-svgrepo-com.svg'%}" alt="logo">
+          Welcome to <span class="grad-text">SmartLearn</span>
+        </h1>
+        <p class="text-sm text-[var(--muted)]">Pick a tool from the left to get started.  </p>
+          {% if request.user.is_authenticated and request.user.study_streak %}
+<div class="streak-container mt-2 inline-flex items-center gap-2 bg-gradient-to-r from-yellow-200 to-yellow-400 text-yellow-900 px-4 py-2 rounded-lg shadow-md font-semibold animate-pulse">
+    🔥 Current Streak: {{ request.user.study_streak.current_streak }} day{{ request.user.study_streak.current_streak|pluralize }}
+</div>
+
+{% endif %}
+       
+      </div>
+
+      <div class="relative z-10 flex items-center gap-3">
+        <span class="hidden md:inline text-sm text-[var(--muted)]">Theme:</span>
+        <div id="themeBadge" class="px-3 py-1 rounded-xl border border-white/10"></div>
+        <button id="openAuth" class="ml-2 px-4 py-2 rounded-full btn flex items-center gap-2" title="Sign in or sign up" onclick="document.getElementById('authModal').classList.add('active')">
+
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          </svg>
+          <span class="text-sm">Sign In</span>
+        </button>
+      </div>
+    </header>
+
+
+<!-- SEARCH -->
+<section id="section-search" class="min-h-screen flex flex-col items-center justify-center text-center relative transition-all duration-500">
+  <!-- Heading -->
+  <h2 id="searchHeading" class="text-4xl md:text-5xl font-bold mb-8 grad-text transition-all duration-500">Welcome to SmartLearn</h2>
+
+  <!-- Search input wrapper -->
+  <div id="searchWrapper" class="w-full max-w-3xl relative transition-all duration-500">
+    <input id="searchInput" type="text" placeholder="Search for a concept..." class="w-full px-6 py-5 text-xl rounded-full border border-white/20 bg-white/5 text-center text-[var(--text)] placeholder-[var(--muted)] focus:outline-none focus:ring-4 focus:ring-[var(--accent)] transition" />
+    <button id="searchBtn"
+  class="absolute right-3 top-1/2 -translate-y-1/2 px-4 py-2 rounded-full btn focus:outline-none focus:ring-0">
+  🔍
+</button>
+
+
+  </div>
+
+  <!-- Result box (hidden initially) -->
+  <div id="searchResult" class="flex flex-col justify-start w-full max-w-5xl h-96 mt-6 border border-white/20 rounded-2xl bg-[var(--panel)]/20 text-white text-left p-4 opacity-0 pointer-events-none overflow-y-auto transition-all duration-500">
+</div>
+
+
+
+</section>
+
+
+
+    <!-- Story -->
+    <section id="section-story" class="card rounded-2xl p-4 md:p-6 hidden z-10">
+      <h2 class="text-xl font-semibold mb-3">Concept ➜ Story</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <label class="text-sm text-[var(--muted)]">Enter your concept</label>
+          <textarea id="conceptInput" class="textarea w-full rounded-xl p-3" rows="6" placeholder="e.g., Newton's First Law"></textarea>
+          <div class="flex items-center gap-2">
+            <select id="toneSelect" class="select rounded-xl px-3 py-2text-white bg-gray-800 ">
+              <option value="simple">Simple</option>
+              <option value="fun">Fun</option>
+              <option value="epic">Epic</option>
+              <option value="analogy">Analogy</option>
+            </select>
+            <button id="genStory" class="px-4 py-2 rounded-xl btn">Generate Story</button>
+          </div>
+        </div>
+        <div class="space-y-3">
+          <label class="text-sm text-[var(--muted)]">Story Output</label>
+          <div id="storyOutput" class="rounded-2xl p-4 border border-white/10 bg-black/10 min-h-[160px]"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Flashcards -->
+    <section id="section-flashcards" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">Flashcards</h2>
+      <div id="flashcardGrid" class="grid md:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!--MCQ Practice--->
+    <section id="section-mcqs" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">MCQs (Practice)</h2>
+      <div id="mcqContainer" class="space-y-3"></div>
+      <div class="flex gap-2 mt-4">
+        <button id="nextMcq" class="px-4 py-2 rounded-xl btn">Next Question</button>
+        <div id="mcqScore" class="ml-auto text-sm text-[var(--muted)]">Score: 0</div>
+      </div>
+    </section>
+
+    <!-- Keywords -->
+    <section id="section-keywords" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">Keywords</h2>
+      <div id="kwList" class="grid md:grid-cols-2 gap-3"></div>
+    </section>
+
+    <!-- MCQ Test -->
+    <section id="section-test" class="card rounded-2xl p-6 md:p-8 hidden z-10">
+      <h2 class="text-xl font-semibold mb-4">MCQ Test</h2>
+      <div id="testArea" class="space-y-4"></div>
+      <div class="flex items-center gap-3 mt-4">
+        <button id="submitTest" class="px-4 py-2 rounded-xl btn">Submit Test</button>
+        <div id="testResult" class="text-sm text-[var(--muted)]"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- AUTH MODAL (centered and higher z-index) -->
+<!-- ===== AUTH MODAL (REPLACE EXISTING MODAL WITH THIS BLOCK) ===== -->
+<!-- ===== AUTH MODAL ===== -->
+<div id="authModal" aria-hidden="true">
+  <div id="authBackdrop" aria-hidden="true"></div>
+
+  <style>
+  /* ---------------- modal-scoped variables (theme-adaptive) ---------------- */
+  
+   body {
+    background-color: var(--page-bg, #1a1a2e); /* replace with your theme background */
+    color: var(--page-text, #fff); /* page text color */
+  }
+  #authModal {
+    --m-accent: var(--accent, #f5d76e);
+    --m-accent-2: var(--accent-2, #f472b6);
+    --m-panel: var(--bg-panel, rgba(255,255,255,0.95));
+    --m-text: var(--text, #1a1a2e);
+    --m-muted: var(--muted, #6b7280);
+    --m-ring: var(--accent-ring, rgba(245,215,110,0.18));
+  }
+
+  /* base - hidden until .active */
+  #authModal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    pointer-events: none;
+  }
+  #authModal.active {
+    display: flex;
+    pointer-events: auto;
+  }
+
+  /* backdrop (adaptive to dark/light theme) */
+#authBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);      /* soft dark overlay */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9990;                     /* below the modal container */
+  pointer-events: none;              /* allow events to pass until modal active */
+  transition: opacity .2s ease;
+  opacity: 0;
+}
+
+  /* modal wrapper */
+  .auth-modal-container {
+    position: relative;
+    z-index: 10002;
+    width: 100%;
+    max-width: 940px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+
+  /* card (theme-adaptive background) */
+ .auth-card {
+    position: relative;
+    width: 420px;
+    max-width: 96%;
+    background: var(--page-bg, #1a1a2e); /* fallback to dark theme if not defined */
+    color: var(--page-text, #fff);
+    border-radius: 22px;
+    border: 1px solid rgba(245,215,110,0.12);
+    padding: 36px 32px;
+    box-shadow: 0 14px 40px rgba(10,10,20,0.45);
+    overflow: visible;
+    z-index: 10003;
+    animation: slideUp 420ms cubic-bezier(.2,.8,.2,1);
+    min-height: auto;
+}
+
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  inset: 0; /* was -25%, now same size as card */
+  border-radius: inherit; /* match card radius */
+  background: radial-gradient(circle at 50% 50%, rgba(245, 215, 110, 0.12), transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+  .auth-card * { position: relative; z-index: 2; }
+
+  /* header */
+  .auth-header { text-align: center; margin-bottom: 18px; }
+  .auth-icon { font-size: 36px; margin-bottom: 6px; }
+  .auth-title {
+    font-size: 26px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--m-accent), var(--m-accent-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+  }
+  .auth-subtitle { font-size: 13px; color: var(--m-muted); margin-top: 6px; }
+
+  /* tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    background: rgba(0,0,0,0.04);
+    padding: 6px;
+    border-radius: 12px;
+    margin: 16px 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--m-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .tab.active {
+  background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2)) !important;
+  color: var(--m-text) !important;
+  box-shadow: 0 6px 16px rgba(245,215,110,0.12), 0 2px 6px rgba(0,0,0,0.08) !important;
+  flex: 1 !important;
+  max-width: 50% !important;
+}
+
+
+/* FORCE HIDE any message/notification elements */
+#signinMsg, #signupMsg, 
+.auth-card > div[id*="msg"],
+.auth-card > div[id*="Msg"],
+.auth-card > p[id*="msg"],
+.auth-card > .message,
+.auth-card > .notification,
+.auth-card > .alert {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Ensure auth-header is first visible element */
+.auth-header {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+  /* form inputs */
+  .form-group { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .form-input {
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(10,10,20,0.06);
+    background: var(--bg-input, #ffffff);
+    color: var(--m-text);
+    font-size: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+  .form-input::placeholder { color: rgba(20,20,30,0.45); }
+  .form-input:focus {
+    outline: none;
+    box-shadow: 0 6px 18px var(--m-ring);
+    border-color: rgba(245,215,110,0.6);
+  }
+
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(245,215,110,0.5);
+  border: none;
+  color: #1a1a2e;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10010;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  flex-grow: 0;
+  min-width: 28px;
+  max-width: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.close-btn:hover {
+  background: rgba(245,215,110,0.8);
+}
+
+/* Remove any pseudo-elements that might be adding text */
+.close-btn::before,
+.close-btn::after {
+  display: none !important;
+  content: none !important;
+}
+/* Fix for yellow bar overlap */
+#authModal .auth-card > *:first-child:not(.close-btn):not(.auth-header) {
+  display: none !important;
+}
+
+/* Alternative: If there's a notification/alert bar */
+.auth-modal-container > div:first-child:not(.auth-card),
+.auth-card > div:first-child:not(.auth-header) {
+  display: none !important;
+}
+
+/* Ensure close button stays on top */
+.close-btn {
+  z-index: 10010 !important;
+}
+
+
+
+  .hidden { display: none !important; }
+
+  /* sparkles */
+  .sparkle {
+    position: absolute;
+    width: 4px; height: 4px;
+    border-radius: 9999px;
+    background: rgba(255,255,255,0.95);
+    filter: drop-shadow(0 0 8px rgba(255,230,180,0.95));
+    opacity: 0.95;
+    pointer-events: none;
+    transform-origin: center;
+    animation: sparkleFloat 6s linear infinite;
+  }
+  @keyframes sparkleFloat {
+    0% { transform: translateY(0) scale(1); opacity: 0.95; }
+    50% { transform: translateY(-28px) scale(1.2); opacity: 0.65; }
+    100% { transform: translateY(0) scale(1); opacity: 0.95; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width:520px){ .auth-card{ padding:24px 18px; width:92%; min-height:380px; } }
+  </style>
+
+  <div class="auth-modal-container" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-card" role="document" aria-describedby="authDesc">
+      <button class="close-btn" id="closeBtn" aria-label="Close auth modal">✕</button>
+      <div id="signinMsg" style="display: none; font-size: 12px; text-align: center; margin-bottom: 10px;"></div>
+<div id="signupMsg" style="display: none; font-size: 12px; text-align: center; margin-bottom: 10px;"></div>
+
+      <div class="auth-header">
+        <div class="auth-icon">🔐</div>
+        <h1 id="authTitle" class="auth-title">Welcome</h1>
+        <p id="authDesc" class="auth-subtitle">Sign in or create an account</p>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Authentication tabs">
+        <button class="tab active" id="tabSignIn" role="tab" aria-selected="true">Sign In</button>
+        <button class="tab" id="tabSignUp" role="tab" aria-selected="false">Sign Up</button>
+      </div>
+
+      <!-- Sign In -->
+      <form id="signinForm" class="signin-form" autocomplete="on" novalidate>
+        <div class="form-group">
+          <input type="email" id="signinEmail" class="form-input" placeholder="Email" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <input type="password" id="signinPassword" class="form-input" placeholder="Password" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="btnSignIn" class="btn-auth">Sign In</button>
+        <p class="text-sm mt-3" style="text-align:center">
+          Don't have an account? <a href="#" id="goToSignup" style="color:var(--m-accent);font-weight:600">Sign up</a>
+        </p>
+      </form>
+
+      <!-- Sign Up -->
+      <form id="signupForm" class="hidden signup-form" autocomplete="on" novalidate>
+        <div class="form-group">
+          <input type="text" id="signupName" class="form-input" placeholder="Full name" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <input type="email" id="signupEmail" class="form-input" placeholder="Email" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <input type="password" id="signupPassword" class="form-input" placeholder="Password" required autocomplete="new-password">
+        </div>
+        <button type="submit" id="btnSignUp" class="btn-auth">Create Account</button>
+        <p class="text-sm mt-3" style="text-align:center">
+          Already have an account? <a href="#" id="goToSignin" style="color:var(--m-accent);font-weight:600">Sign in</a>
+        </p>
+      </form>
+
+      <div class="sparkles-container" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
+  <script src=" {% static 'Demo_app/js/auth.js' %}" ></script>
+  <script src="{% static 'Demo_app/js/script.js'%}"></script>
+<script>
+(function(){
+  const authModal = document.getElementById('authModal');
+  const authBackdrop = document.getElementById('authBackdrop');
+  const closeBtn = document.getElementById('closeBtn');
+  const tabSignIn = document.getElementById('tabSignIn');
+  const tabSignUp = document.getElementById('tabSignUp');
+  const signinForm = document.getElementById('signinForm');
+  const signupForm = document.getElementById('signupForm');
+  const btnSignIn = document.getElementById('btnSignIn');
+  const btnSignUp = document.getElementById('btnSignUp');
+  const goToSignup = document.getElementById('goToSignup');
+  const goToSignin = document.getElementById('goToSignin');
+  const authCard = document.querySelector('.auth-card');
+  const sparklesContainer = authCard?.querySelector('.sparkles-container');
+
+  if(!authModal) return;
+
+  function showModal(){ 
+    authModal.classList.add('active'); 
+    authModal.setAttribute('aria-hidden','false'); 
+    createSparkles(18); 
+  }
+  
+  function hideModal(){ 
+    authModal.classList.remove('active'); 
+    authModal.setAttribute('aria-hidden','true'); 
+    removeSparkles(); 
+  }
+
+  function switchToSignIn(){
+    tabSignIn?.classList.add('active'); 
+    tabSignIn?.setAttribute('aria-selected','true');
+    tabSignUp?.classList.remove('active'); 
+    tabSignUp?.setAttribute('aria-selected','false');
+    signinForm?.classList.remove('hidden'); 
+    signupForm?.classList.add('hidden');
+    setTimeout(()=>document.getElementById('signinEmail')?.focus(),120);
+  }
+  
+  function switchToSignUp(){
+    tabSignUp?.classList.add('active'); 
+    tabSignUp?.setAttribute('aria-selected','true');
+    tabSignIn?.classList.remove('active'); 
+    tabSignIn?.setAttribute('aria-selected','false');
+    signupForm?.classList.remove('hidden'); 
+    signinForm?.classList.add('hidden');
+    setTimeout(()=>document.getElementById('signupName')?.focus(),120);
+  }
+
+  // ✅ FIXED: Only open modal if user is NOT logged in
+ // ✅ FIXED: Only attach to buttons that are NOT logged in
+const openAuthBtns = document.querySelectorAll('[id="openAuth"]:not([data-logged-in]), .open-auth');
+openAuthBtns.forEach(b=> {
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    showModal();
+  });
+});
+  closeBtn?.addEventListener('click', (e)=>{ e.preventDefault(); hideModal(); });
+  authBackdrop?.addEventListener('click', ()=> hideModal());
+  document.addEventListener('keydown', (e)=>{ 
+    if(e.key==='Escape' && authModal.classList.contains('active')) hideModal(); 
+  });
+
+  tabSignIn?.addEventListener('click', (e)=>{ e.preventDefault(); switchToSignIn(); });
+  tabSignUp?.addEventListener('click', (e)=>{ e.preventDefault(); switchToSignUp(); });
+  goToSignup?.addEventListener('click', (e)=>{ e.preventDefault(); switchToSignUp(); });
+  goToSignin?.addEventListener('click', (e)=>{ e.preventDefault(); switchToSignIn(); });
+
+  btnSignIn?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const email = document.getElementById('signinEmail')?.value.trim() || '';
+    const password = document.getElementById('signinPassword')?.value || '';
+    if(typeof window.handleSignIn === 'function') window.handleSignIn(email,password);
+    else console.log('Sign in (no handler):', email);
+  });
+
+  btnSignUp?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('signupName')?.value.trim() || '';
+    const email = document.getElementById('signupEmail')?.value.trim() || '';
+    const password = document.getElementById('signupPassword')?.value || '';
+    if(typeof window.handleSignUp === 'function') window.handleSignUp(name,email,password);
+    else console.log('Sign up (no handler):', email);
+  });
+
+  document.getElementById('signinPassword')?.addEventListener('keypress', (e)=>{ 
+    if(e.key==='Enter') btnSignIn?.click(); 
+  });
+  
+  document.getElementById('signupPassword')?.addEventListener('keypress', (e)=>{ 
+    if(e.key==='Enter') btnSignUp?.click(); 
+  });
+
+  function createSparkles(count=18){
+    if(!sparklesContainer) return;
+    removeSparkles();
+    for(let i=0;i<count;i++){
+      const s=document.createElement('div');
+      s.className='sparkle';
+      s.style.left=(8+Math.random()*84)+'%';
+      s.style.top=(6+Math.random()*84)+'%';
+      s.style.transform=`translate(-50%,-50%) scale(${0.6+Math.random()*1.2})`;
+      s.style.animationDelay=(Math.random()*4)+'s';
+      sparklesContainer.appendChild(s);
+    }
+  }
+  
+  function removeSparkles(){ 
+    sparklesContainer?.querySelectorAll('.sparkle')?.forEach(n=>n.remove()); 
+  }
+
+  switchToSignIn();
+  if(authModal.classList.contains('active')) createSparkles();
+})();
+</script>

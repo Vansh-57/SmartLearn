@@ -1,0 +1,76 @@
+# 🎯 Quick Reference - Quota & Data Fixes
+
+## Before vs After
+
+| Feature | Before | After |
+|---------|--------|-------|
+| **Explanation Length** | 300-400 words | 500-700 words |
+| **Story Length** | 200-300 words | 300-400 words |
+| **Batch 1 Max Tokens** | 1500 | 3000 |
+| **Batch 2 Max Tokens** | 2500 | 3500 |
+| **Data Truncation** | ❌ Yes | ✅ No |
+| **Quota Display** | ❌ No | ✅ Yes (every search) |
+| **Quota in Response** | ❌ No | ✅ Yes (JSON) |
+| **Console Feedback** | Basic | Detailed with metrics |
+
+---
+
+## Console Output Examples
+
+### Each API Call Shows:
+```
+🔵 AI Call 1/3 (Model: gemini-2.5-flash, Key: 1)
+✅ Response: 2847 chars
+📊 API Quota: 1/60 calls | 59 remaining | 1.7% used
+```
+
+### Final Summary Shows:
+```
+📊 API QUOTA STATUS:
+   Calls Used: 2/60
+   Remaining: 58 calls
+   Usage: 3.3%
+```
+
+---
+
+## JSON Response Includes:
+
+```json
+"quota_info": {
+  "calls_made": 2,
+  "quota_limit": 60,
+  "remaining": 58,
+  "usage_percent": 3.3
+}
+```
+
+---
+
+## Key Points
+
+1. **No More Truncation**: Increased all max_tokens values
+2. **Better Instructions**: Explicit "COMPLETE" and "DETAILED" prompts
+3. **Live Quota Tracking**: See usage after each search
+4. **Auto-Recovery**: Hits limit? Switches keys automatically
+5. **Response Time**: Still 3-5 seconds (same as before)
+
+---
+
+## Quota Formula
+
+**Per Search**: 2 API calls
+**Per Minute Limit**: 60 calls
+**Max Searches**: 30 searches per minute
+**One Hit**: 3.3% quota used
+
+---
+
+## Get Started
+
+```powershell
+python manage.py runserver
+# Visit: http://localhost:8000/ai/search-all/?topic=photosynthesis
+```
+
+Watch the terminal for quota updates! 📊
