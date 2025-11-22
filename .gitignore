@@ -1,0 +1,27 @@
+.env
+*.env
+__pycache__/
+*.pyc
+db.sqlite3
+
+# Virtual environments
+Demo_env/
+venv/
+env/
+
+# Logs
+*.log
+
+# Static files (collected)
+staticfiles/
+
+# Media files (user uploads)
+media/
+
+# Migrations cache
+**/migrations/*.pyc
+**/migrations/__pycache__/
+
+# VS Code settings
+.vscode/
+git commit -m "Initial commit"

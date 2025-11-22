@@ -1,0 +1,1 @@
+web: gunicorn SmartLearn_v2.wsgi:application
