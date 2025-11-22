@@ -26,7 +26,7 @@
     };
   </script>
 
-  <link rel="stylesheet" href="{% static 'Demo_app/css/style.css'%}">
+  <link rel="stylesheet" href="{% static 'demo_app/css/style.css'%}">
 </head>
 <body id="app" class="thematic min-h-screen flex">
   
@@ -40,7 +40,7 @@
           <path d="M4 7h16M4 12h12M4 17h16"></path> 
         </svg> 
       </button> 
-      <img src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}" alt="logo" class="brand-logo w-8 h-8"> 
+      <img src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}"> <alt="logo" class="brand-logo w-8 h-8"> 
       <div class="brand-text font-semibold text-lg md:text-xl grad-text">SmartLearn</div>
     </div>
 
@@ -142,7 +142,7 @@ document.getElementById('historyToggle')?.addEventListener('click', function() {
     <header id="pageHeader" class="flex items-center justify-between mb-4 relative">
       <div class="header-left relative z-10">
         <h1 class="text-2xl md:text-3xl font-semibold flex items-center gap-3">
-          <img class="logo w-8 h-8" src="{% static 'Demo_app/image/bulb-svgrepo-com.svg'%}" alt="logo">
+          <img class="logo w-8 h-8" src="{% static 'demo_app/image/bulb-svgrepo-com.svg'%}">
           Welcome to <span class="grad-text">SmartLearn</span>
         </h1>
         <p class="text-sm text-[var(--muted)]">Pick a tool from the left to get started.  </p>
@@ -561,8 +561,8 @@ document.getElementById('historyToggle')?.addEventListener('click', function() {
     </div>
   </div>
 </div>
-  <script src=" {% static 'Demo_app/js/auth.js' %}" ></script>
-  <script src="{% static 'Demo_app/js/script.js'%}"></script>
+ <script src="{% static 'demo_app/js/auth.js' %}"></script>
+  <script src="{% static 'demo_app/js/script.js'%}"></script>
 <script>
 (function(){
   const authModal = document.getElementById('authModal');
